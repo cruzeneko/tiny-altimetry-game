@@ -4,43 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Wake Separation — Time & Distance Minima Trainer</title>
+<link rel="stylesheet" href="../../assets/theme.css">
 <style>
-  :root{
-    --bg:#0E1726; --panel:#152034; --panel2:#1B2840;
-    --ink:#DCE6F2; --muted:#7E8CA3; --grid:#243349;
-    --cyan:#38BDF8; --amber:#F4B860; --green:#34D399; --red:#F87171; --violet:#C4A6F5;
-    --mono:ui-monospace,"SF Mono","Cascadia Code",Menlo,Consolas,monospace;
-    --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
-  }
-  *{box-sizing:border-box}
-  html,body{margin:0}
-  body{
-    background:radial-gradient(1200px 600px at 80% -10%, #18233a 0%, transparent 60%),var(--bg);
-    color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased;
-    padding:22px 16px 48px;min-height:100vh;
-  }
-  .wrap{max-width:940px;margin:0 auto}
-  header{margin-bottom:16px}
-  .eyebrow{font:600 11px/1 var(--sans);letter-spacing:.22em;text-transform:uppercase;color:var(--cyan);margin-bottom:8px}
-  h1{font:650 26px/1.1 var(--sans);letter-spacing:-.01em;margin:0 0 6px}
-  .tip{color:var(--muted);font-size:13.5px;line-height:1.5;max-width:68ch;margin:0}
-  .tip b{color:var(--amber);font-weight:600}
-
-  .modes{display:flex;flex-wrap:wrap;gap:6px;margin:16px 0 10px}
-  .mpill{font:600 12px/1 var(--sans);color:var(--muted);background:var(--panel2);border:1px solid var(--grid);border-radius:999px;padding:9px 14px;cursor:pointer}
-  .mpill.on{border-color:var(--amber);color:var(--amber);background:#221c10}
-  .mpill:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
-
-  .bar{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;margin:6px 0 18px}
-  .stat{display:flex;align-items:baseline;gap:7px}
-  .stat .k{font:600 10px/1 var(--sans);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
-  .stat .v{font:600 17px/1 var(--mono)}
-  .spacer{flex:1 1 auto}
-  button.ctl{font:600 12.5px/1 var(--sans);color:var(--ink);background:var(--panel2);border:1px solid var(--grid);border-radius:9px;padding:9px 13px;cursor:pointer}
-  button.ctl:hover{border-color:var(--cyan)}
-  button.ctl.on{border-color:var(--amber);color:var(--amber)}
-  button:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
-
   .game{display:flex;gap:18px;align-items:flex-start}
   .matrix{width:300px;flex:none;background:linear-gradient(180deg,#101b2e,#0c1626);border:1px solid var(--grid);border-radius:14px;padding:14px}
   .matrix .ttl{font:600 10px/1 var(--sans);letter-spacing:.16em;text-transform:uppercase;color:var(--muted);text-align:center;margin-bottom:4px}
@@ -72,39 +37,6 @@
   .arrow{font:600 22px/1 var(--mono);color:var(--muted)}
   .qtext{margin:16px 0 4px;font-size:14px;color:var(--ink)}
   .qtext b{color:var(--ink)}
-  .opts{display:grid;gap:10px;margin-top:16px}
-  .opt{appearance:none;cursor:pointer;border:1.5px solid var(--grid);background:var(--panel);color:var(--ink);border-radius:11px;padding:15px 8px;font:600 15px/1 var(--mono);transition:border-color .12s,background .12s,transform .06s}
-  .opt:hover:not(:disabled){border-color:var(--ink)}
-  .opt:active:not(:disabled){transform:translateY(1px)}
-  .opt:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
-  .opt.right{border-color:var(--green);background:rgba(52,211,153,.14);color:var(--green)}
-  .opt.wrong{border-color:var(--red);background:rgba(248,113,113,.14);color:var(--red)}
-  .opt:disabled{cursor:default}
-  .feed{margin-top:15px;min-height:40px;font:500 13px/1.5 var(--mono);color:var(--muted)}
-  .feed b{color:var(--green);font-weight:600}
-  .feed .x{color:var(--amber);font-weight:600}
-
-  .key{margin-top:18px;border:1px solid var(--grid);border-radius:12px;overflow:hidden;display:none}
-  .key.show{display:block}
-  .key .sec{padding:12px 14px;border-top:1px solid var(--grid)}
-  .key .sec:first-child{border-top:0}
-  .key h3{font:600 10px/1 var(--sans);letter-spacing:.14em;text-transform:uppercase;color:var(--cyan);margin:0 0 8px}
-  .key table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:12.5px}
-  .key td,.key th{padding:6px 8px;text-align:left;border-top:1px solid var(--grid)}
-  .key th{font:600 9.5px/1 var(--sans);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);border:0}
-  .key td.a{color:var(--amber)} .key td.c{color:var(--cyan)} .key td.g{color:var(--green)}
-  .key p{font:500 12px/1.5 var(--sans);color:var(--muted);margin:8px 0 0}
-
-  .done{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(8,13,22,.78);padding:20px;z-index:5}
-  .done.show{display:flex}
-  .dcard{background:var(--panel);border:1px solid var(--grid);border-radius:16px;padding:26px 28px;max-width:360px;text-align:center}
-  .dcard h3{font:650 22px/1.1 var(--sans);margin:0 0 4px}
-  .dcard p{color:var(--muted);font-size:13.5px;margin:0 0 16px}
-  .dcard .res{display:flex;justify-content:center;gap:22px;margin:6px 0 18px}
-  .dcard .res div{display:flex;flex-direction:column;gap:4px}
-  .dcard .res .v{font:600 22px/1 var(--mono);color:var(--cyan)}
-  .dcard .res .k{font:600 10px/1 var(--sans);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
-  .dcard button{font:600 14px/1 var(--sans);background:var(--cyan);color:#06121f;border:0;border-radius:10px;padding:12px 20px;cursor:pointer;width:100%}
 
   @media(max-width:660px){ .game{flex-direction:column} .matrix{width:100%} }
 </style>
@@ -112,7 +44,8 @@
 <body>
 <div class="wrap">
   <header>
-    <div class="eyebrow">ICAO Doc 4444 · Wake Turbulence</div>
+    <a class="crumb" href="../../index.html">All trainers</a>
+    <div class="eyebrow">010 Air Law · ICAO Doc 4444 · Wake Turbulence</div>
     <h1>Separation trainer — time &amp; distance</h1>
     <p class="tip">Pick the minimum separation for the following aircraft. Correct answers fill the matrix on the left. Key contrasts: a Light behind a Heavy is <b>2 min departing but 3 min landing</b> — yet the <b>distance</b> minima are one table for both phases.</p>
   </header>
