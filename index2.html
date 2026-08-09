@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wake Separation — Time & Distance Minima Trainer</title>
+<style>
+  :root{
+    --bg:#0E1726; --panel:#152034; --panel2:#1B2840;
+    --ink:#DCE6F2; --muted:#7E8CA3; --grid:#243349;
+    --cyan:#38BDF8; --amber:#F4B860; --green:#34D399; --red:#F87171; --violet:#C4A6F5;
+    --mono:ui-monospace,"SF Mono","Cascadia Code",Menlo,Consolas,monospace;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    background:radial-gradient(1200px 600px at 80% -10%, #18233a 0%, transparent 60%),var(--bg);
+    color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased;
+    padding:22px 16px 48px;min-height:100vh;
+  }
+  .wrap{max-width:940px;margin:0 auto}
+  header{margin-bottom:16px}
+  .eyebrow{font:600 11px/1 var(--sans);letter-spacing:.22em;text-transform:uppercase;color:var(--cyan);margin-bottom:8px}
+  h1{font:650 26px/1.1 var(--sans);letter-spacing:-.01em;margin:0 0 6px}
+  .tip{color:var(--muted);font-size:13.5px;line-height:1.5;max-width:68ch;margin:0}
+  .tip b{color:var(--amber);font-weight:600}
+
+  .modes{display:flex;flex-wrap:wrap;gap:6px;margin:16px 0 10px}
+  .mpill{font:600 12px/1 var(--sans);color:var(--muted);background:var(--panel2);border:1px solid var(--grid);border-radius:999px;padding:9px 14px;cursor:pointer}
+  .mpill.on{border-color:var(--amber);color:var(--amber);background:#221c10}
+  .mpill:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+
+  .bar{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;margin:6px 0 18px}
+  .stat{display:flex;align-items:baseline;gap:7px}
+  .stat .k{font:600 10px/1 var(--sans);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+  .stat .v{font:600 17px/1 var(--mono)}
+  .spacer{flex:1 1 auto}
+  button.ctl{font:600 12.5px/1 var(--sans);color:var(--ink);background:var(--panel2);border:1px solid var(--grid);border-radius:9px;padding:9px 13px;cursor:pointer}
+  button.ctl:hover{border-color:var(--cyan)}
+  button.ctl.on{border-color:var(--amber);color:var(--amber)}
+  button:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+
+  .game{display:flex;gap:18px;align-items:flex-start}
+  .matrix{width:300px;flex:none;background:linear-gradient(180deg,#101b2e,#0c1626);border:1px solid var(--grid);border-radius:14px;padding:14px}
+  .matrix .ttl{font:600 10px/1 var(--sans);letter-spacing:.16em;text-transform:uppercase;color:var(--muted);text-align:center;margin-bottom:4px}
+  .matrix .sub{font:500 10.5px/1.35 var(--sans);color:var(--muted);text-align:center;margin-bottom:12px}
+  .matrix .sub b{color:var(--cyan);font-weight:600}
+  table.mx{width:100%;border-collapse:collapse;table-layout:fixed}
+  table.mx th{font:600 11px/1 var(--mono);color:var(--muted);padding:4px 0;font-weight:600}
+  table.mx th.corner{font:600 8.5px/1.2 var(--sans);letter-spacing:.04em;color:var(--muted)}
+  table.mx td{height:46px;text-align:center;border:1px solid var(--grid)}
+  .cell{display:flex;align-items:center;justify-content:center;height:100%;font:600 15px/1 var(--mono);border-radius:6px;transition:background .35s,color .35s}
+  .cell.na{color:#3a4a63}
+  .cell.q{color:var(--muted);background:#101a2c}
+  .cell.lit{color:var(--green);background:rgba(52,211,153,.12);box-shadow:0 0 0 1px rgba(52,211,153,.4) inset}
+  .cell.litna{color:#5e6e86;background:rgba(120,140,170,.07)}
+  .cell.missed{color:var(--amber);background:rgba(244,184,96,.12);box-shadow:0 0 0 1px rgba(244,184,96,.4) inset}
+  .cell.active{box-shadow:0 0 0 2px var(--cyan) inset}
+  .legend{margin-top:11px;font:500 10.5px/1.5 var(--sans);color:var(--muted);text-align:center}
+
+  .play{flex:1 1 auto;min-width:0}
+  .scn{background:var(--panel);border:1px solid var(--grid);border-radius:14px;padding:20px 18px;text-align:center}
+  .scn .role{font:600 10px/1 var(--sans);letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:14px}
+  .pair{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap}
+  .ac{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:96px;padding:12px 10px;border:1.5px solid var(--grid);border-radius:11px;background:var(--panel2)}
+  .ac .cat{font:600 19px/1 var(--sans)}
+  .ac .mt{font:600 10px/1 var(--mono);color:var(--muted)}
+  .ac.lead .cat{color:var(--amber)}
+  .ac.foll .cat{color:var(--cyan)}
+  .ac .tag{font:600 9px/1 var(--sans);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+  .arrow{font:600 22px/1 var(--mono);color:var(--muted)}
+  .qtext{margin:16px 0 4px;font-size:14px;color:var(--ink)}
+  .qtext b{color:var(--ink)}
+  .opts{display:grid;gap:10px;margin-top:16px}
+  .opt{appearance:none;cursor:pointer;border:1.5px solid var(--grid);background:var(--panel);color:var(--ink);border-radius:11px;padding:15px 8px;font:600 15px/1 var(--mono);transition:border-color .12s,background .12s,transform .06s}
+  .opt:hover:not(:disabled){border-color:var(--ink)}
+  .opt:active:not(:disabled){transform:translateY(1px)}
+  .opt:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+  .opt.right{border-color:var(--green);background:rgba(52,211,153,.14);color:var(--green)}
+  .opt.wrong{border-color:var(--red);background:rgba(248,113,113,.14);color:var(--red)}
+  .opt:disabled{cursor:default}
+  .feed{margin-top:15px;min-height:40px;font:500 13px/1.5 var(--mono);color:var(--muted)}
+  .feed b{color:var(--green);font-weight:600}
+  .feed .x{color:var(--amber);font-weight:600}
+
+  .key{margin-top:18px;border:1px solid var(--grid);border-radius:12px;overflow:hidden;display:none}
+  .key.show{display:block}
+  .key .sec{padding:12px 14px;border-top:1px solid var(--grid)}
+  .key .sec:first-child{border-top:0}
+  .key h3{font:600 10px/1 var(--sans);letter-spacing:.14em;text-transform:uppercase;color:var(--cyan);margin:0 0 8px}
+  .key table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:12.5px}
+  .key td,.key th{padding:6px 8px;text-align:left;border-top:1px solid var(--grid)}
+  .key th{font:600 9.5px/1 var(--sans);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);border:0}
+  .key td.a{color:var(--amber)} .key td.c{color:var(--cyan)} .key td.g{color:var(--green)}
+  .key p{font:500 12px/1.5 var(--sans);color:var(--muted);margin:8px 0 0}
+
+  .done{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(8,13,22,.78);padding:20px;z-index:5}
+  .done.show{display:flex}
+  .dcard{background:var(--panel);border:1px solid var(--grid);border-radius:16px;padding:26px 28px;max-width:360px;text-align:center}
+  .dcard h3{font:650 22px/1.1 var(--sans);margin:0 0 4px}
+  .dcard p{color:var(--muted);font-size:13.5px;margin:0 0 16px}
+  .dcard .res{display:flex;justify-content:center;gap:22px;margin:6px 0 18px}
+  .dcard .res div{display:flex;flex-direction:column;gap:4px}
+  .dcard .res .v{font:600 22px/1 var(--mono);color:var(--cyan)}
+  .dcard .res .k{font:600 10px/1 var(--sans);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+  .dcard button{font:600 14px/1 var(--sans);background:var(--cyan);color:#06121f;border:0;border-radius:10px;padding:12px 20px;cursor:pointer;width:100%}
+
+  @media(max-width:660px){ .game{flex-direction:column} .matrix{width:100%} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">ICAO Doc 4444 · Wake Turbulence</div>
+    <h1>Separation trainer — time &amp; distance</h1>
+    <p class="tip">Pick the minimum separation for the following aircraft. Correct answers fill the matrix on the left. Key contrasts: a Light behind a Heavy is <b>2 min departing but 3 min landing</b> — yet the <b>distance</b> minima are one table for both phases.</p>
+  </header>
+
+  <div class="modes" id="modes">
+    <button class="mpill on" data-m="dep">Departing · time</button>
+    <button class="mpill" data-m="arr">Landing · time</button>
+    <button class="mpill" data-m="depDist">Departing · dist</button>
+    <button class="mpill" data-m="arrDist">Landing · dist</button>
+  </div>
+
+  <div class="bar">
+    <div class="stat"><span class="k">Time</span><span class="v" id="time">0:00</span></div>
+    <div class="stat"><span class="k">Solved</span><span class="v" id="prog">0/8</span></div>
+    <div class="stat"><span class="k">Misses</span><span class="v" id="miss">0</span></div>
+    <div class="spacer"></div>
+    <button class="ctl" id="key">Show key</button>
+    <button class="ctl" id="new">New round</button>
+  </div>
+
+  <div class="game">
+    <aside class="matrix">
+      <div class="ttl">Separation matrix</div>
+      <div class="sub" id="mxSub"></div>
+      <table class="mx" id="mx"></table>
+      <div class="legend" id="legend"></div>
+    </aside>
+    <main class="play">
+      <div class="scn">
+        <div class="role" id="role">Departure</div>
+        <div class="pair">
+          <div class="ac lead"><span class="tag">ahead</span><span class="cat" id="leadCat">HEAVY</span><span class="mt" id="leadMt">≥136 t</span></div>
+          <span class="arrow" id="arrow">↟</span>
+          <div class="ac foll"><span class="tag">behind</span><span class="cat" id="follCat">LIGHT</span><span class="mt" id="follMt">≤7 t</span></div>
+        </div>
+        <p class="qtext" id="qtext"></p>
+        <div class="opts" id="opts"></div>
+        <div class="feed" id="feed">Choose the minimum wake-turbulence separation.</div>
+      </div>
+      <div class="key" id="keyBox"></div>
+    </main>
+  </div>
+</div>
+
+<div class="done" id="done">
+  <div class="dcard">
+    <h3 id="dTtl">Matrix complete</h3>
+    <p>Every wake-relevant pairing placed.</p>
+    <div class="res">
+      <div><span class="v" id="dTime">0:00</span><span class="k">Time</span></div>
+      <div><span class="v" id="dAcc">100%</span><span class="k">Accuracy</span></div>
+    </div>
+    <button id="again">Play again</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  const CATS=[
+    {k:'S',name:'SUPER', mt:'A380 / An-225'},
+    {k:'H',name:'HEAVY', mt:'≥ 136 t'},
+    {k:'M',name:'MEDIUM',mt:'7–136 t'},
+    {k:'L',name:'LIGHT', mt:'≤ 7 t'},
+  ];
+
+  // value: null = n/a (faded), 0 = quiz "no minimum", else quiz value (min or NM)
+  // rows = aircraft AHEAD, cols = aircraft BEHIND.  Order: S,H,M,L
+  const TIME_DEP=[
+    [null, 2,    3,    3 ],
+    [null, 0,    2,    2 ],
+    [null, null, 0,    2 ],
+    [null, null, null, null],
+  ];
+  const TIME_ARR=[
+    [null, 2,    3,    4 ],
+    [null, 0,    2,    3 ],
+    [null, null, 0,    3 ],
+    [null, null, null, null],
+  ];
+  // ICAO Doc 4444 §8.7.3.4 — ONE distance table for BOTH approach and departure.
+  const DIST=[
+    [null, 5,    7,    8 ],
+    [null, 4,    5,    6 ],
+    [null, null, 0,    5 ],
+    [null, null, null, null],
+  ];
+
+  const CFG={
+    dep:    {grid:TIME_DEP, phase:'dep', unit:'min', opts:[0,2,3,4],      title:'Departing · minutes',                          dist:false},
+    arr:    {grid:TIME_ARR, phase:'arr', unit:'min', opts:[0,2,3,4],      title:'Landing · minutes',                            dist:false},
+    depDist:{grid:DIST,     phase:'dep', unit:'NM',  opts:[0,4,5,6,7,8],  title:'Departing · NM · same table for approach',     dist:true},
+    arrDist:{grid:DIST,     phase:'arr', unit:'NM',  opts:[0,4,5,6,7,8],  title:'Landing · NM · same table for departure',      dist:true},
+  };
+
+  let mode='dep', queue=[], idx=0, solved=0, misses=0, attempts=0, total=0;
+  let startTime=0, timer=null, locked=false;
+
+  const $=id=>document.getElementById(id);
+  const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]];}return a;};
+  const fmt=ms=>{const s=Math.floor(ms/1000);return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');};
+  const ansLabel=(v,unit)=> v===0 ? 'No wake sep' : v+' '+unit;
+
+  function build(){
+    const cfg=CFG[mode], grid=cfg.grid;
+    let html='<tr><th class="corner">ahead ↓ / behind →</th>';
+    CATS.forEach(c=>html+='<th>'+c.k+'</th>'); html+='</tr>';
+    grid.forEach((row,r)=>{
+      html+='<tr><th>'+CATS[r].k+'</th>';
+      row.forEach((v,c)=>{
+        if(v===null) html+='<td><div class="cell na">—</div></td>';
+        else html+='<td><div class="cell q" id="c'+r+c+'">?</div></td>';
+      });
+      html+='</tr>';
+    });
+    $('mx').innerHTML=html;
+    $('mxSub').innerHTML='<b>'+cfg.title.split(' · ')[0]+'</b> · '+cfg.title.split(' · ').slice(1).join(' · ');
+    $('legend').innerHTML='numbers = '+(cfg.dist?'NM':'minutes')+' &nbsp;·&nbsp; — = no wake minimum<br>rows = aircraft ahead · columns = aircraft behind';
+    $('opts').style.gridTemplateColumns='repeat('+(cfg.opts.length>4?3:2)+',1fr)';
+
+    queue=[];
+    grid.forEach((row,r)=>row.forEach((v,c)=>{ if(v!==null) queue.push({r,c,ans:v}); }));
+    shuffle(queue);
+    total=queue.length; idx=0; solved=0; misses=0; attempts=0; locked=false;
+    $('prog').textContent='0/'+total; $('miss').textContent='0';
+    $('done').classList.remove('show');
+    startTimer(); nextQ();
+  }
+
+  function startTimer(){clearInterval(timer);startTime=Date.now();timer=setInterval(()=>{$('time').textContent=fmt(Date.now()-startTime);},250);}
+
+  function nextQ(){
+    if(idx>=queue.length){ finish(); return; }
+    locked=false;
+    const cfg=CFG[mode], q=queue[idx], lead=CATS[q.r], foll=CATS[q.c];
+    $('role').textContent=(cfg.phase==='dep'?'Departure':'Arrival')+(cfg.dist?' · radar':'');
+    $('arrow').textContent=cfg.phase==='dep'?'↟':'↡';
+    $('leadCat').textContent=lead.name; $('leadMt').textContent=lead.mt;
+    $('follCat').textContent=foll.name; $('follMt').textContent=foll.mt;
+    const verb=cfg.phase==='dep'?'departing':'landing';
+    const sep=cfg.dist?'radar separation':'separation';
+    $('qtext').innerHTML='How much '+sep+' for a <b>'+foll.name+'</b> '+verb+' behind a <b>'+lead.name+'</b>?';
+    document.querySelectorAll('.cell.active').forEach(e=>e.classList.remove('active'));
+    const cell=$('c'+q.r+q.c); if(cell) cell.classList.add('active');
+    const opts=$('opts'); opts.innerHTML='';
+    cfg.opts.forEach(v=>{
+      const b=document.createElement('button');
+      b.className='opt'; b.textContent=ansLabel(v,cfg.unit); b.dataset.v=v;
+      b.addEventListener('click',()=>answer(v,b,q));
+      opts.appendChild(b);
+    });
+    $('feed').innerHTML='Choose the minimum wake-turbulence separation.';
+  }
+
+  function answer(v,btn,q){
+    if(locked) return; locked=true; attempts++;
+    const cfg=CFG[mode], cell=$('c'+q.r+q.c), correct=(v===q.ans);
+    [...$('opts').children].forEach(b=>{ b.disabled=true; if(+b.dataset.v===q.ans) b.classList.add('right'); });
+    cell.classList.remove('q','active');
+    cell.textContent = q.ans===0?'—':q.ans;
+    if(correct){
+      btn.classList.add('right'); cell.classList.add(q.ans===0?'litna':'lit');
+      solved++; $('feed').innerHTML='<b>Correct.</b> '+explain(q);
+    }else{
+      btn.classList.add('wrong'); cell.classList.add(q.ans===0?'litna':'missed');
+      misses++; $('feed').innerHTML='<span class="x">'+ansLabel(q.ans,cfg.unit)+'.</span> '+explain(q);
+    }
+    $('prog').textContent=solved+'/'+total; $('miss').textContent=misses;
+    idx++; setTimeout(nextQ, correct?900:1700);
+  }
+
+  function explain(q){
+    const cfg=CFG[mode], lead=CATS[q.r].name, foll=CATS[q.c].name, v=q.ans;
+    if(cfg.dist){
+      if(v===0) return foll+' behind '+lead+' — ICAO sets no distance wake minimum (the standard radar minimum still applies).';
+      let s=foll+' behind '+lead+' = '+v+' NM.';
+      if(lead==='SUPER'&&foll==='HEAVY') s+=' This is the ICAO baseline — the EU and US apply 6 NM here.';
+      s+=' Distance minima are identical for departure and approach (§8.7.3.4).';
+      return s;
+    }
+    if(v===0) return foll+' behind '+lead+' — ICAO sets no wake-turbulence time minimum (normal separation still applies).';
+    if(v===4) return 'A Light follower behind the A380 on approach is the single most conservative case (4 min).';
+    const dep=cfg.phase==='dep';
+    if(foll==='LIGHT' && (lead==='HEAVY'||lead==='MEDIUM'))
+      return dep ? 'Light behind '+lead+' departing = 2 min (it is 3 min on landing — note the difference).'
+                 : 'Light behind '+lead+' landing = 3 min (only 2 min on departure).';
+    return foll+' behind '+lead+' = '+v+' min'+(dep?' (from the preceding aircraft starting its take-off roll).':' (measured at the threshold).');
+  }
+
+  function finish(){
+    clearInterval(timer);
+    document.querySelectorAll('.cell.active').forEach(e=>e.classList.remove('active'));
+    const acc=attempts?Math.round(solved/attempts*100):100;
+    $('dTime').textContent=fmt(Date.now()-startTime);
+    $('dAcc').textContent=acc+'%';
+    $('dTtl').textContent=CFG[mode].title.split(' · ')[0]+(CFG[mode].dist?' · distance':' · time')+' complete';
+    setTimeout(()=>$('done').classList.add('show'),450);
+  }
+
+  function buildKey(){
+    const timeRows=g=>{let o='';g.forEach((row,r)=>row.forEach((v,c)=>{if(v===null||v===0)return;o+='<tr><td class="a">'+CATS[r].name+'</td><td class="c">'+CATS[c].name+'</td><td class="g">'+v+' min</td></tr>';}));return o;};
+    const distRows=()=>{let o='';DIST.forEach((row,r)=>row.forEach((v,c)=>{if(v===null||v===0)return;o+='<tr><td class="a">'+CATS[r].name+'</td><td class="c">'+CATS[c].name+'</td><td class="g">'+v+' NM</td></tr>';}));return o;};
+    $('keyBox').innerHTML=
+      '<div class="sec"><h3>Wake categories (MTOM)</h3><table><tr><th>Cat</th><th>Code</th><th>Mass</th></tr>'+
+        '<tr><td class="a">Super</td><td>J</td><td>A380, An-225 (per Doc 8643)</td></tr>'+
+        '<tr><td class="a">Heavy</td><td>H</td><td>≥ 136,000 kg</td></tr>'+
+        '<tr><td class="a">Medium</td><td>M</td><td>7,000–136,000 kg</td></tr>'+
+        '<tr><td class="a">Light</td><td>L</td><td>≤ 7,000 kg</td></tr></table></div>'+
+      '<div class="sec"><h3>Time — Departing (full length, same/parallel &lt;760 m)</h3>'+
+        '<table><tr><th>Ahead</th><th>Behind</th><th>Min</th></tr>'+timeRows(TIME_DEP)+'</table>'+
+        '<p>+1 min if the follower departs from an intermediate point of the same runway.</p></div>'+
+      '<div class="sec"><h3>Time — Landing (non-radar)</h3>'+
+        '<table><tr><th>Ahead</th><th>Behind</th><th>Min</th></tr>'+timeRows(TIME_ARR)+'</table></div>'+
+      '<div class="sec"><h3>Distance — radar (§8.7.3.4, departure &amp; approach)</h3>'+
+        '<table><tr><th>Ahead</th><th>Behind</th><th>NM</th></tr>'+distRows()+'</table>'+
+        '<p>One table for both phases. ICAO baseline shown — the EU/US apply 6 NM for Heavy behind Super. A reduced 2.5 NM may be used on the same final approach track within 10 NM of the threshold under specified conditions. Heavy-behind-Heavy is 4 NM, but Medium-behind-Medium has no specified minimum.</p></div>'+
+      '<div class="sec"><h3>ICAO vs FAA / EASA differences</h3><table><tr><th>Topic</th><th>How it differs</th></tr>'+
+        '<tr><td class="a">Heavy behind Super</td><td>ICAO 5 NM; EASA (EU 2020/469) and FAA (Order 7110.65) both use 6 NM.</td></tr>'+
+        '<tr><td class="a">Boeing 757</td><td>ICAO classes it Medium (~116 t). FAA handles it specially — its own Large tier and heavy-like spacing as a leader; some states require it be treated as Heavy when ahead.</td></tr>'+
+        '<tr><td class="a">FAA categories</td><td>FAA inserts a Large tier (41,000–300,000 lb) between Medium and Heavy, so the category breakpoints are not the same as ICAO four.</td></tr>'+
+        '<tr><td class="a">Super members</td><td>ICAO Super = A380 only (the An-225 was Heavy to ICAO). FAA Super = A380 + An-225. UK CAA Super = A380 + An-124.</td></tr>'+
+        '<tr><td class="a">RECAT</td><td>EUROCONTROL RECAT-EU (groups A–F) and FAA RECAT regroup types at busy airports, generally reducing minima. The ICAO equivalent is the seven Wake Turbulence Groups A–G, used only where the ATS authority approves.</td></tr>'+
+        '<tr><td class="a">En-route</td><td>ICAO specifies no en-route wake minimum; the UK requires 5 NM behind a Heavy/A380 for a lower category following or crossing at the same level or up to 1000 ft below.</td></tr>'+
+        '</table><p>This trainer uses the baseline ICAO Doc 4444 figures. If your exam is EASA- or FAA-referenced, apply the variants above where they differ.</p></div>';
+  }
+
+  $('modes').addEventListener('click',e=>{
+    const b=e.target.closest('button'); if(!b) return;
+    mode=b.dataset.m;
+    [...$('modes').children].forEach(x=>x.classList.toggle('on',x===b));
+    build();
+  });
+  $('new').addEventListener('click',build);
+  $('again').addEventListener('click',build);
+  $('key').addEventListener('click',e=>{
+    const box=$('keyBox'); const open=box.classList.toggle('show');
+    e.target.classList.toggle('on',open); e.target.textContent=open?'Hide key':'Show key';
+  });
+
+  buildKey(); build();
+})();
+</script>
+</body>
+</html>
