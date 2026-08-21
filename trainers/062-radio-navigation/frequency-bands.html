@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Frequency Bands — Which Service Is This?</title>
+<link rel="stylesheet" href="../../assets/theme.css">
+<style>
+  .game{display:flex;gap:18px;align-items:flex-start}
+
+  /* signature: the spectrum ladder — every service in ascending frequency order */
+  .spectrum{width:286px;flex:none;background:linear-gradient(180deg,#101b2e,#0c1626);
+    border:1px solid var(--grid);border-radius:14px;padding:14px 12px}
+  .spectrum .ttl{font:600 10px/1 var(--sans);letter-spacing:.16em;text-transform:uppercase;color:var(--muted);text-align:center;margin-bottom:4px}
+  .spectrum .sub{font:500 10.5px/1.35 var(--sans);color:var(--muted);text-align:center;margin-bottom:12px}
+  .spectrum .sub b{color:var(--cyan);font-weight:600}
+
+  .bd{display:flex;align-items:center;gap:8px;margin:9px 0 6px}
+  .bd span{font:600 9.5px/1 var(--mono);letter-spacing:.12em;color:var(--muted);flex:none}
+  .bd i{flex:1 1 auto;border-top:1px dashed var(--grid)}
+
+  .row{display:flex;align-items:flex-start;gap:8px;padding:5px 4px;border-radius:7px;
+    opacity:.3;transition:opacity .35s,background .35s}
+  .row .dot{width:8px;height:8px;border-radius:50%;background:#33445f;flex:none;margin-top:4px;
+    box-shadow:0 0 0 0 var(--green);transition:background .35s,box-shadow .35s}
+  .row .txt{min-width:0}
+  .row .rn{display:block;font:600 12.5px/1.25 var(--sans);color:var(--muted)}
+  .row .rr{display:block;font:500 9.5px/1.3 var(--mono);color:var(--muted);opacity:.75;margin-top:2px}
+  .row.lit{opacity:1}
+  .row.lit .dot{background:var(--green);box-shadow:0 0 9px 1px rgba(52,211,153,.55)}
+  .row.lit .rn{color:var(--ink)}
+  .row.missed{opacity:1}
+  .row.missed .dot{background:var(--amber);box-shadow:0 0 9px 1px rgba(244,184,96,.45)}
+  .row.missed .rn{color:var(--amber)}
+  .row.active{background:rgba(56,189,248,.08);box-shadow:0 0 0 1px rgba(56,189,248,.45) inset;opacity:1}
+  .row.na{opacity:.12}
+
+  .legend{margin-top:12px;font:500 10.5px/1.5 var(--sans);color:var(--muted);text-align:center}
+
+  .play{flex:1 1 auto;min-width:0}
+  .scn{background:var(--panel);border:1px solid var(--grid);border-radius:14px;padding:20px 18px;text-align:center}
+  .scn .role{font:600 10px/1 var(--sans);letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:15px}
+
+  /* receiver readout */
+  .radio{display:inline-flex;align-items:baseline;gap:11px;background:#0a121f;
+    border:1px solid var(--grid);border-radius:12px;padding:17px 26px;
+    box-shadow:inset 0 0 30px rgba(0,0,0,.55)}
+  .radio .freq{font:600 38px/1 var(--mono);color:var(--amber);letter-spacing:.02em;
+    text-shadow:0 0 18px rgba(244,184,96,.32)}
+  .radio .unit{font:600 13px/1 var(--sans);letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+
+  .qtext{margin:17px 0 2px;font-size:14px;color:var(--ink)}
+  .qtext b{color:var(--ink)}
+
+  /* service names read better in sans than the shared mono */
+  .opt{font:600 13.5px/1.25 var(--sans);padding:14px 10px}
+
+  @media(max-width:680px){
+    .game{flex-direction:column}
+    .spectrum{width:100%}
+    .radio .freq{font-size:32px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <a class="crumb" href="../../index.html">All trainers</a>
+    <div class="eyebrow">062 Radio Navigation · Frequency Allocation</div>
+    <h1>Which service is this frequency?</h1>
+    <p class="tip">Read the number off the receiver and name the service. The one that catches everybody sits in 108–112&nbsp;MHz, where VOR and the ILS localizer share the band and are told apart only by the first decimal: <b>even is VOR, odd is localizer</b>. Correct answers light up the spectrum on the left.</p>
+  </header>
+
+  <div class="modes" id="modes">
+    <button class="mpill on" data-m="core">Nav &amp; comms</button>
+    <button class="mpill" data-m="all">Everything</button>
+    <button class="mpill" data-m="split">108–112 MHz split</button>
+    <button class="mpill" data-m="band">Name the ITU band</button>
+  </div>
+
+  <div class="bar">
+    <div class="stat"><span class="k">Time</span><span class="v" id="time">0:00</span></div>
+    <div class="stat"><span class="k">Solved</span><span class="v" id="prog">0/0</span></div>
+    <div class="stat"><span class="k">Misses</span><span class="v" id="miss">0</span></div>
+    <div class="spacer"></div>
+    <button class="ctl" id="key">Show key</button>
+    <button class="ctl" id="new">New round</button>
+  </div>
+
+  <div class="game">
+    <aside class="spectrum">
+      <div class="ttl">Spectrum</div>
+      <div class="sub" id="spSub"></div>
+      <div id="ladder"></div>
+      <div class="legend">green = identified · amber = missed<br>faded = not in this round</div>
+    </aside>
+
+    <main class="play">
+      <div class="scn">
+        <div class="role" id="role">Receiver</div>
+        <div class="radio"><span class="freq" id="freq">—</span><span class="unit" id="unit"></span></div>
+        <p class="qtext" id="qtext"></p>
+        <div class="opts" id="opts"></div>
+        <div class="feed" id="feed">Name the service that operates on this frequency.</div>
+      </div>
+      <div class="key" id="keyBox"></div>
+    </main>
+  </div>
+</div>
+
+<div class="done" id="done">
+  <div class="dcard">
+    <h3 id="dTtl">Spectrum complete</h3>
+    <p>Every service in this round identified.</p>
+    <div class="res">
+      <div><span class="v" id="dTime">0:00</span><span class="k">Time</span></div>
+      <div><span class="v" id="dAcc">100%</span><span class="k">Accuracy</span></div>
+    </div>
+    <button id="again">Play again</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  const rnd  = n => Math.random()*n|0;
+  const ri   = (lo,hi) => lo + rnd(hi-lo+1);
+  const pick = a => a[rnd(a.length)];
+  const shuffle = a => { for(let i=a.length-1;i>0;i--){const j=rnd(i+1);[a[i],a[j]]=[a[j],a[i]];} return a; };
+
+  // Frequencies are held in kHz throughout so the ITU band lookup is one comparison.
+  // fmt() turns kHz back into the unit that service is actually quoted in — part of the
+  // skill is knowing that NDB and HF come in kHz while everything above them is MHz.
+  const mhz = (khz,dp) => ({num:(khz/1000).toFixed(dp), unit:'MHz'});
+  const ghz = (khz,dp) => ({num:(khz/1e6).toFixed(dp),  unit:'GHz'});
+  const khzU = khz => ({num:String(khz), unit:'kHz'});
+
+  // Ascending by frequency — the ladder renders in this order.
+  const SERVICES = [
+    { id:'ndb', name:'NDB', grp:'LF / MF', range:'190–1750 kHz',
+      gen:()=> Math.random()<0.4 ? ri(190,299) : ri(300,1750),   // keep LF examples common enough to matter
+      fmt:khzU,
+      note:'The only navaid tuned in kHz. Straddles LF and MF.' },
+
+    { id:'hf', name:'HF voice', grp:'HF', range:'2.85–22 MHz',
+      gen:()=> pick([3016,5598,5616,5649,6622,8864,8879,8891,8906,10021,11336,13306,17946]),
+      fmt:khzU,
+      note:'Aeronautical HF bands, quoted in kHz. Oceanic and remote-area voice.' },
+
+    { id:'mkr', name:'Marker beacon', grp:'VHF', range:'75 MHz',
+      gen:()=> 75000, fmt:k=>mhz(k,2),
+      note:'Outer, middle and inner all on 75 MHz — told apart by tone and light, not frequency.' },
+
+    { id:'vor', name:'VOR', grp:'VHF', range:'108.00–117.95 MHz',
+      gen:()=> Math.random()<0.55
+        ? 108000 + ri(0,3)*1000 + pick([0,200,400,600,800]) + pick([0,50])   // even tenth = VOR
+        : 112000 + ri(0,5)*1000 + ri(0,9)*100 + pick([0,50]),                // 112+ is VOR only
+      fmt:k=>mhz(k,2),
+      note:'50 kHz spacing. Below 112 MHz only the even tenths are VOR.' },
+
+    { id:'loc', name:'ILS localizer', grp:'VHF', range:'108.10–111.95 MHz',
+      gen:()=> 108000 + ri(0,3)*1000 + pick([100,300,500,700,900]) + pick([0,50]),  // odd tenth = LOC
+      fmt:k=>mhz(k,2),
+      note:'40 channels on the odd tenths of 108–112 MHz. Carries the paired glideslope.' },
+
+    { id:'com', name:'VHF voice', grp:'VHF', range:'118.000–136.975 MHz',
+      gen:()=> Math.random()<0.10 ? 121500 : 118000 + ri(0,18)*1000 + ri(0,39)*25,
+      fmt:k=>mhz(k,3),
+      note:'25 kHz (or 8.33 kHz) channels. 121.500 is the emergency frequency.' },
+
+    { id:'gs', name:'ILS glideslope', grp:'UHF', range:'328.6–335.4 MHz',
+      gen:()=> 329150 + ri(0,39)*150, fmt:k=>mhz(k,2),
+      note:'Never tuned directly — paired to the localizer channel you select.' },
+
+    { id:'elt', name:'ELT / beacon', grp:'UHF', range:'406 MHz',
+      gen:()=> pick([406025,406028,406037]), fmt:k=>mhz(k,3),
+      note:'406 MHz to the COSPAS-SARSAT satellites, with 121.5 MHz for homing.' },
+
+    { id:'dme', name:'DME / TACAN', grp:'UHF', range:'962–1213 MHz',
+      gen:()=> { let m; do { m = ri(962,1213); } while(m===1030||m===1090||m===1176); return m*1000; },
+      fmt:k=>mhz(k,0),
+      note:'1 MHz channels, paired to a VHF VOR or ILS frequency so you never dial it in.' },
+
+    { id:'ssr', name:'SSR / Mode S', grp:'UHF', range:'1030 / 1090 MHz',
+      gen:()=> pick([1030000,1090000]), fmt:k=>mhz(k,0),
+      note:'Interrogation up on 1030, reply down on 1090. Reserved out of the DME band.' },
+
+    { id:'gnss', name:'GNSS', grp:'UHF', range:'1176 / 1228 / 1575 MHz',
+      gen:()=> pick([1176450,1227600,1575420]), fmt:k=>mhz(k,2),
+      note:'GPS L1 1575.42, L2 1227.60, L5 1176.45 MHz.' },
+
+    { id:'ralt', name:'Radio altimeter', grp:'SHF', range:'4200–4400 MHz',
+      gen:()=> ri(4200,4400)*1000, fmt:k=>ghz(k,2),
+      note:'4.2–4.4 GHz. The adjacent 5G C-band allocation is why this became contentious.' },
+
+    { id:'wxr', name:'Weather radar', grp:'SHF', range:'9300–9500 MHz',
+      gen:()=> pick([9345000,9375000,9410000]), fmt:k=>ghz(k,3),
+      note:'X-band, around 9.3–9.5 GHz. Short wavelength reflects off precipitation.' },
+  ];
+  const SVC = Object.fromEntries(SERVICES.map(s=>[s.id,s]));
+  const ALL = SERVICES.map(s=>s.id);
+
+  // ITU band edges, in kHz.
+  const ITU = [
+    {k:'LF',  lo:30,      hi:300},
+    {k:'MF',  lo:300,     hi:3000},
+    {k:'HF',  lo:3000,    hi:30000},
+    {k:'VHF', lo:30000,   hi:300000},
+    {k:'UHF', lo:300000,  hi:3000000},
+    {k:'SHF', lo:3000000, hi:30000000},
+  ];
+  const ituOf = khz => (ITU.find(b=>khz>=b.lo && khz<b.hi)||{k:'—'}).k;
+
+  const MODES = {
+    core : {title:'Nav & comms',   ids:['ndb','hf','mkr','vor','loc','com','gs','dme'], reps:2, kind:'svc'},
+    all  : {title:'Everything',    ids:ALL,             reps:1, kind:'svc'},
+    split: {title:'108–112 MHz',   ids:['vor','loc'],   reps:6, kind:'svc'},
+    band : {title:'ITU band',      ids:ALL,             reps:1, kind:'band'},
+  };
+
+  let mode='core', queue=[], idx=0, solved=0, misses=0, attempts=0, total=0;
+  let startTime=0, timer=null, locked=false, cur=null;
+
+  const $ = id => document.getElementById(id);
+  const fmtT = ms => { const s=Math.floor(ms/1000); return Math.floor(s/60)+':'+String(s%60).padStart(2,'0'); };
+  const freqText = f => f.num+' '+f.unit;
+
+  function buildLadder(){
+    const live = new Set(MODES[mode].ids);
+    let html='', grp=null;
+    SERVICES.forEach(s=>{
+      if(s.grp!==grp){ grp=s.grp; html+='<div class="bd"><span>'+grp+'</span><i></i></div>'; }
+      html+='<div class="row'+(live.has(s.id)?'':' na')+'" id="r-'+s.id+'">'+
+        '<span class="dot"></span><span class="txt">'+
+        '<span class="rn">'+s.name+'</span><span class="rr">'+s.range+'</span></span></div>';
+    });
+    $('ladder').innerHTML=html;
+  }
+
+  function build(){
+    const m = MODES[mode];
+    buildLadder();
+    $('spSub').innerHTML = '<b>'+m.title+'</b> · '+(m.kind==='band'?'name the band':'name the service');
+
+    queue=[];
+    m.ids.forEach(id=>{ for(let i=0;i<m.reps;i++) queue.push(id); });
+    shuffle(queue);
+    total=queue.length; idx=0; solved=0; misses=0; attempts=0; locked=false;
+    $('prog').textContent='0/'+total; $('miss').textContent='0';
+    $('done').classList.remove('show');
+    startTimer(); nextQ();
+  }
+
+  function startTimer(){
+    clearInterval(timer); startTime=Date.now();
+    timer=setInterval(()=>{ $('time').textContent=fmtT(Date.now()-startTime); },250);
+  }
+
+  // With more than eight services on the table, offering all of them is a scanning
+  // exercise rather than a recall one. Offer the answer plus its neighbours in the
+  // spectrum, which is where the genuine confusion lives.
+  function optionIds(ansId, ids){
+    if(ids.length<=8) return ids.slice();
+    const set=new Set([ansId]);
+    if(ansId==='vor') set.add('loc');
+    if(ansId==='loc') set.add('vor');
+    const i=ids.indexOf(ansId);
+    for(let d=1; set.size<6 && d<ids.length; d++){
+      if(ids[i-d]) set.add(ids[i-d]);
+      if(set.size<6 && ids[i+d]) set.add(ids[i+d]);
+    }
+    return ids.filter(x=>set.has(x));
+  }
+
+  function nextQ(){
+    if(idx>=queue.length){ finish(); return; }
+    locked=false;
+    const m=MODES[mode], id=queue[idx], s=SVC[id];
+    const khz=s.gen(), f=Object.assign({khz}, s.fmt(khz));
+    cur={id, f, band:ituOf(khz)};
+
+    $('role').textContent = m.kind==='band' ? 'Receiver · identify the band' : 'Receiver · identify the service';
+    $('freq').textContent = f.num;
+    $('unit').textContent = f.unit;
+    $('qtext').innerHTML = m.kind==='band'
+      ? 'Which <b>ITU band</b> does this frequency fall in?'
+      : 'Which service operates on <b>'+freqText(f)+'</b>?';
+
+    document.querySelectorAll('.row.active').forEach(e=>e.classList.remove('active'));
+    const row=$('r-'+id); if(row) row.classList.add('active');
+
+    const opts=$('opts'); opts.innerHTML='';
+    const values = m.kind==='band'
+      ? ITU.map(b=>({v:b.k, label:b.k}))
+      : optionIds(id, m.ids).map(x=>({v:x, label:SVC[x].name}));
+    opts.style.gridTemplateColumns = 'repeat('+(m.kind==='band'?3:2)+',1fr)';
+    values.forEach(o=>{
+      const b=document.createElement('button');
+      b.className='opt'; b.textContent=o.label; b.dataset.v=o.v;
+      b.addEventListener('click',()=>answer(o.v,b));
+      opts.appendChild(b);
+    });
+    $('feed').innerHTML = m.kind==='band'
+      ? 'Name the ITU band this frequency sits in.'
+      : 'Name the service that operates on this frequency.';
+  }
+
+  function answer(v,btn){
+    if(locked) return; locked=true; attempts++;
+    const m=MODES[mode];
+    const ansV = m.kind==='band' ? cur.band : cur.id;
+    const ok = (v===ansV);
+    [...$('opts').children].forEach(b=>{ b.disabled=true; if(b.dataset.v===ansV) b.classList.add('right'); });
+    if(!ok) btn.classList.add('wrong');
+
+    const row=$('r-'+cur.id);
+    if(row){
+      row.classList.remove('active');
+      if(ok){ row.classList.remove('missed'); row.classList.add('lit'); }
+      else if(!row.classList.contains('lit')) row.classList.add('missed');
+    }
+
+    if(ok){ solved++; $('feed').innerHTML='<b>Correct.</b> '+explain(); }
+    else  { misses++; $('feed').innerHTML='<span class="x">'+(m.kind==='band'?cur.band:SVC[cur.id].name)+'.</span> '+explain(); }
+
+    $('prog').textContent=solved+'/'+total; $('miss').textContent=misses;
+    idx++; setTimeout(nextQ, ok?1000:1900);
+  }
+
+  function explain(){
+    const s=SVC[cur.id], f=cur.f, t=freqText(f);
+
+    if(MODES[mode].kind==='band'){
+      let out = t+' is '+cur.band+' — '+s.name+'.';
+      if(s.id==='ndb') out += ' NDBs straddle the boundary: 190–300 kHz is LF, 300 kHz and above is MF.';
+      else if(cur.band==='UHF') out += ' Everything from 300 MHz to 3 GHz is UHF — glideslope, DME, SSR and GNSS all sit here.';
+      else if(cur.band==='VHF') out += ' 30–300 MHz: markers, VOR, localizer and voice.';
+      else if(cur.band==='SHF') out += ' Above 3 GHz — the airborne radars.';
+      return out;
+    }
+
+    switch(s.id){
+      case 'ndb':
+        return 'NDB — 190–1750 kHz. HF voice is quoted in kHz too, so magnitude is what separates them: below 1750 is a beacon, above 3000 is voice.';
+      case 'hf':
+        return 'HF voice — the aeronautical bands run 2.85–22 MHz and are quoted in kHz on the radio. Oceanic and remote-area work.';
+      case 'mkr':
+        return 'Marker beacon — outer, middle and inner all transmit on 75 MHz. They are identified by tone and light colour, never by frequency.';
+      case 'vor': {
+        const sub112 = f.khz < 112000;
+        return sub112
+          ? 'VOR — the first decimal is even, so this is a VOR. Odd would make it an ILS localizer. Both share 108–112 MHz.'
+          : 'VOR — above 111.95 MHz there is no ILS, so everything from 112.00 to 117.95 MHz is VOR.';
+      }
+      case 'loc':
+        return 'ILS localizer — the first decimal is odd, which is what marks it out from a VOR in the shared 108–112 MHz band. The glideslope comes with it automatically.';
+      case 'com':
+        return f.khz===121500
+          ? 'VHF voice — and specifically 121.500 MHz, the international emergency frequency.'
+          : 'VHF voice — 118.000 to 136.975 MHz. Nothing below 118 MHz carries voice; that is all navaids.';
+      case 'gs':
+        return 'ILS glideslope — 328.6 to 335.4 MHz, which is UHF. You never tune it: it is paired to the localizer channel.';
+      case 'elt':
+        return 'ELT — 406 MHz to the COSPAS-SARSAT satellites. The 121.5 MHz signal is only for homing once searchers are close.';
+      case 'dme':
+        return 'DME (and TACAN) — 962 to 1213 MHz, UHF, on 1 MHz channels. You select it on a VHF VOR or ILS frequency because the channels are paired.';
+      case 'ssr':
+        return 'SSR — the interrogation goes up on 1030 MHz and the reply comes down on 1090 MHz. Both sit inside the DME band but are reserved.';
+      case 'gnss':
+        return 'GNSS — GPS L1 is 1575.42, L2 is 1227.60 and L5 is 1176.45 MHz. L5 falls inside the DME band, which is exactly why DME interference is a live concern.';
+      case 'ralt':
+        return 'Radio altimeter — 4.2 to 4.4 GHz, SHF. Its neighbour in the spectrum is the 5G C-band, hence the argument.';
+      case 'wxr':
+        return 'Airborne weather radar — X-band, about 9.3 to 9.5 GHz. Short enough to reflect off precipitation.';
+    }
+    return '';
+  }
+
+  function finish(){
+    clearInterval(timer);
+    document.querySelectorAll('.row.active').forEach(e=>e.classList.remove('active'));
+    const acc = attempts ? Math.round(solved/attempts*100) : 100;
+    $('dTime').textContent = fmtT(Date.now()-startTime);
+    $('dAcc').textContent = acc+'%';
+    $('dTtl').textContent = MODES[mode].title+' complete';
+    setTimeout(()=>$('done').classList.add('show'),450);
+  }
+
+  function buildKey(){
+    const svcRows = SERVICES.map(s=>
+      '<tr><td class="a">'+s.name+'</td><td class="c">'+s.range+'</td><td>'+s.note+'</td></tr>').join('');
+    const ituRows = [
+      ['LF','30–300 kHz','Lower end of the NDB band; long-range ground wave.'],
+      ['MF','300 kHz–3 MHz','Most NDBs. Ground wave by day, sky-wave interference at night.'],
+      ['HF','3–30 MHz','Long-range voice by sky wave; the aero bands run 2.85–22 MHz.'],
+      ['VHF','30–300 MHz','Markers, VOR, ILS localizer, voice. Line of sight from here up.'],
+      ['UHF','300 MHz–3 GHz','ILS glideslope, DME, SSR, GNSS, ELT.'],
+      ['SHF','3–30 GHz','Radio altimeter and airborne weather radar.'],
+    ].map(r=>'<tr><td class="a">'+r[0]+'</td><td class="c">'+r[1]+'</td><td>'+r[2]+'</td></tr>').join('');
+
+    $('keyBox').innerHTML =
+      '<div class="sec"><h3>Services by frequency</h3>'+
+        '<table><tr><th>Service</th><th>Frequencies</th><th>Notes</th></tr>'+svcRows+'</table></div>'+
+
+      '<div class="sec"><h3>The 108–112 MHz split</h3>'+
+        '<table><tr><th>First decimal</th><th>Service</th><th>Examples</th></tr>'+
+        '<tr><td class="a">Even</td><td class="c">VOR</td><td class="g">108.00 · 108.25 · 109.60 · 111.85</td></tr>'+
+        '<tr><td class="a">Odd</td><td class="c">ILS localizer</td><td class="g">108.10 · 108.35 · 109.70 · 111.95</td></tr></table>'+
+        '<p>Both use 50 kHz spacing, which gives 40 localizer channels between 108.10 and 111.95 MHz. '+
+        'From 112.00 to 117.95 MHz the question does not arise — that range is VOR only.</p></div>'+
+
+      '<div class="sec"><h3>ITU bands</h3>'+
+        '<table><tr><th>Band</th><th>Range</th><th>What lives there</th></tr>'+ituRows+'</table></div>'+
+
+      '<div class="sec"><h3>What catches people out</h3>'+
+        '<table><tr><th>Trap</th><th>The point</th></tr>'+
+        '<tr><td class="a">NDB vs HF</td><td>Both are quoted in kHz. Below 1750 kHz is a beacon, 3000 kHz and above is voice.</td></tr>'+
+        '<tr><td class="a">DME is UHF</td><td>You select DME on a VHF VOR or ILS frequency, but it transmits at 962–1213 MHz. Paired channels, not the frequency you dialled.</td></tr>'+
+        '<tr><td class="a">Glideslope is UHF</td><td>The localizer is VHF, its glideslope is UHF at 328.6–335.4 MHz, and you never tune the glideslope yourself.</td></tr>'+
+        '<tr><td class="a">All markers share 75 MHz</td><td>Outer, middle and inner differ in tone (400/1300/3000 Hz) and light (blue/amber/white), not frequency.</td></tr>'+
+        '<tr><td class="a">SSR sits inside DME</td><td>1030 and 1090 MHz fall within 962–1213 MHz but are reserved for interrogation and reply.</td></tr>'+
+        '<tr><td class="a">GPS L5 sits inside DME too</td><td>1176.45 MHz is in the DME band — the reason DME interference with L5 is an active issue.</td></tr>'+
+        '<tr><td class="a">Emergency frequencies</td><td>121.5 MHz VHF guard, 243.0 MHz UHF military guard (exactly twice 121.5), 406 MHz for satellite ELTs.</td></tr>'+
+        '<tr><td class="a">Nothing below 118 is voice</td><td>108–118 MHz is navigation only. Voice starts at 118.000 MHz.</td></tr>'+
+        '</table></div>';
+  }
+
+  $('modes').addEventListener('click',e=>{
+    const b=e.target.closest('button'); if(!b) return;
+    mode=b.dataset.m;
+    [...$('modes').children].forEach(x=>x.classList.toggle('on',x===b));
+    build();
+  });
+  $('new').addEventListener('click',build);
+  $('again').addEventListener('click',build);
+  $('key').addEventListener('click',e=>{
+    const box=$('keyBox'); const open=box.classList.toggle('show');
+    e.target.classList.toggle('on',open); e.target.textContent=open?'Hide key':'Show key';
+  });
+
+  buildKey(); build();
+})();
+</script>
+</body>
+</html>

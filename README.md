@@ -26,6 +26,7 @@ Directories are named `<syllabus code>-<subject>`, following the EASA ATPL(A) nu
 |---|---|---|
 | 010 Air Law | [Wake separation](trainers/010-air-law/wake-separation.html) | ICAO Doc 4444 time and distance minima, all four modes, plus the EASA/FAA variants |
 | 050 Meteorology | [Sounding](trainers/050-meteorology/pressure-flight-level.html) | Standard pressure surfaces against their ISA flight levels |
+| 062 Radio Navigation | [Frequency bands](trainers/062-radio-navigation/frequency-bands.html) | Classifying a frequency by service, the 108–112 MHz VOR/localizer split, and the ITU bands |
 
 ## Adding a trainer
 
@@ -78,6 +79,7 @@ Candidates, unordered within each subject — to be prioritised.
 - [ ] Great circle vs rhumb line — convergency and conversion angle
 
 **062 Radio Navigation**
+- [x] Frequency bands — classify a frequency by service, plus the ITU bands
 - [ ] VOR orientation — radial, TO/FROM and quadrant off a live compass rose (visual)
 - [ ] ADF bearings — RB + MH = MB, both ways, including the wrap-around cases
 
